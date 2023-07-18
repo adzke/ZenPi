@@ -1,14 +1,7 @@
 use mpv::{Event, MpvHandler};
-use std::{
-    str::FromStr,
-    sync::{mpsc::Receiver, Arc, Mutex},
-};
+use std::sync::{mpsc::Receiver, Arc, Mutex, MutexGuard};
 
 use crate::api::Message;
-
-//
-// API
-//
 
 fn configure_logger() {
     env_logger::init();
@@ -21,30 +14,6 @@ pub fn configure_player() -> MpvHandler {
     //     .set_option("sid", "no")
     //     .expect("Failed to set option 'sid' to 'no'");
     return mpv_builder.build().expect("failed to build");
-}
-
-pub fn load_file(player: Arc<Mutex<MpvHandler>>) -> () {
-    log::info!("Loading file into MPV Player");
-
-    let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
-
-    player
-        .lock()
-        .unwrap()
-        .command(&command_array)
-        .expect("Failed to execute command");
-}
-
-pub fn stop_player(player: Arc<Mutex<MpvHandler>>) -> () {
-    log::info!("Stopping MPV Player");
-
-    let command_array = ["stop"];
-
-    player
-        .lock()
-        .unwrap()
-        .command(&command_array)
-        .expect("Failed to execute command");
 }
 
 // fn human_time_remaining(seconds: &f64) -> String {
@@ -61,15 +30,10 @@ pub fn stop_player(player: Arc<Mutex<MpvHandler>>) -> () {
 // }
 
 pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
-    configure_logger();
-
-    log::info!("Starting ZENPLAYER by AD");
     let player = configure_player();
     let player = Arc::new(Mutex::new(player));
 
     log::info!("Loading file into MPV Player");
-
-    load_file(player.clone());
 
     loop {
         let mut player_lock = player.lock().unwrap();
@@ -78,10 +42,16 @@ pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
             println!("{:?}", message.ipc_command);
             match message.ipc_command {
                 crate::api::Command::Start => {
-                    load_file(player.clone());
+                    let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
+                    let _ = &player_lock
+                        .command(&command_array)
+                        .expect("Failed to execute command");
                 }
                 crate::api::Command::Stop => {
-                    stop_player(player.clone());
+                    let command_array = ["stop"];
+                    let _ = &player_lock
+                        .command(&command_array)
+                        .expect("Failed to execute command");
                 }
             }
         }
