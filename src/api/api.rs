@@ -1,7 +1,7 @@
 
 use std::sync::{mpsc::Sender, Arc, Mutex};
 
-use poem::{get, handler, listener::TcpListener, web::{Path, Data}, Route, Server, EndpointExt};
+use poem::{get, handler, listener::TcpListener, web::{Path, Data, Json}, Route, Server, EndpointExt, post};
 
 use super::Message;
 
@@ -18,10 +18,10 @@ async fn hello(Path(name): Path<String>, data: Data<&Arc<Mutex<Sender<Message>>>
 
 
 #[handler]
-async fn time_remaining(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
+async fn time_remaining(body: Json<Message>, data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
 
     let message = Message {
-        ipc_command: format!("time_remaining").to_string()
+        ipc_command: body.ipc_command.clone()
     };
 
     data.lock().unwrap().send(message).expect("failed to send");
@@ -32,7 +32,7 @@ pub async fn main(tx: Arc<Mutex<Sender<Message>>>) -> Result<(), std::io::Error>
     println!("Starting server");
     let app = Route::new()
     .at("/hello/:name", get(hello).data(tx.clone()))
-    .at("/time_remaining/", get(time_remaining).data(tx.clone()));
+    .at("/time_remaining/", post(time_remaining).data(tx.clone()));
     let _ = Server::new(TcpListener::bind("0.0.0.0:4000"))
         .run(app).await?;
     Ok(())

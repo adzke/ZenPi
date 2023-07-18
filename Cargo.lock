@@ -1257,5 +1257,6 @@ dependencies = [
  "log 0.4.19",
  "mpv",
  "poem",
+ "serde",
  "tokio",
 ]

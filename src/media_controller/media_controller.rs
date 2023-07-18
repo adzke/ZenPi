@@ -65,7 +65,7 @@ pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
         if let Ok(message) = rx.clone().lock().unwrap().try_recv(){
             println!("{:?}", message.ipc_command);
             
-            if let Ok(result) = player_lock.command(&["time-remaining"]){
+            if let Ok(result) = player_lock.command(&[&format!("{}", message.ipc_command)]){
                 println!("{:?}", result)
             }
         }
@@ -76,9 +76,6 @@ pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
             match event {
                 Event::EndFile(_) => {
                     println!("all done :D")
-                }
-                Event::PlaybackRestart => {
-                    let time = player_lock.command(&["time-remaining"]).unwrap();
                 }
                 _ => (),
             }
