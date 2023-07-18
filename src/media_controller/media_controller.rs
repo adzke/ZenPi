@@ -1,5 +1,8 @@
 use mpv::{Event, MpvHandler};
-use std::sync::{Arc, Mutex, mpsc::Receiver};
+use std::{
+    str::FromStr,
+    sync::{mpsc::Receiver, Arc, Mutex},
+};
 
 use crate::api::Message;
 
@@ -32,19 +35,30 @@ pub fn load_file(player: Arc<Mutex<MpvHandler>>) -> () {
         .expect("Failed to execute command");
 }
 
-fn human_time_remaining(seconds: &f64) -> String {
-    let time = seconds.round() as u64;
-    let days = time / 86400;
-    let hours = (time % 86400) / 3600;
-    let minutes = ((time % 86400) % 3600) / 60;
-    let seconds = ((time % 86400) % 3600) % 60;
+pub fn stop_player(player: Arc<Mutex<MpvHandler>>) -> () {
+    log::info!("Stopping MPV Player");
 
-    return format!(
-        "days: {}, hours: {}, minutes: {}, seconds: {}, remaing.",
-        days, hours, minutes, seconds
-    );
+    let command_array = ["stop"];
+
+    player
+        .lock()
+        .unwrap()
+        .command(&command_array)
+        .expect("Failed to execute command");
 }
 
+// fn human_time_remaining(seconds: &f64) -> String {
+//     let time = seconds.round() as u64;
+//     let days = time / 86400;
+//     let hours = (time % 86400) / 3600;
+//     let minutes = ((time % 86400) % 3600) / 60;
+//     let seconds = ((time % 86400) % 3600) % 60;
+
+//     return format!(
+//         "days: {}, hours: {}, minutes: {}, seconds: {}, remaing.",
+//         days, hours, minutes, seconds
+//     );
+// }
 
 pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
     configure_logger();
@@ -57,19 +71,20 @@ pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
 
     load_file(player.clone());
 
-
     loop {
-
         let mut player_lock = player.lock().unwrap();
 
-        if let Ok(message) = rx.clone().lock().unwrap().try_recv(){
+        if let Ok(message) = rx.clone().lock().unwrap().try_recv() {
             println!("{:?}", message.ipc_command);
-            
-            if let Ok(result) = player_lock.command(&[&format!("{}", message.ipc_command)]){
-                println!("{:?}", result)
+            match message.ipc_command {
+                crate::api::Command::Start => {
+                    load_file(player.clone());
+                }
+                crate::api::Command::Stop => {
+                    stop_player(player.clone());
+                }
             }
         }
-        
 
         if let Some(event) = player_lock.wait_event(0.0) {
             println!("{:?}", event);
