@@ -1,7 +1,7 @@
 use mpv::{Event, MpvHandler};
 use std::sync::{mpsc::Receiver, Arc, Mutex, MutexGuard};
 
-use crate::api::Message;
+use crate::api::{Message, Command};
 
 fn configure_logger() {
     env_logger::init();
@@ -41,14 +41,20 @@ pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
         if let Ok(message) = rx.clone().lock().unwrap().try_recv() {
             println!("{:?}", message.ipc_command);
             match message.ipc_command {
-                crate::api::Command::Start => {
+                Command::Start => {
                     let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
                     let _ = &player_lock
                         .command(&command_array)
                         .expect("Failed to execute command");
                 }
-                crate::api::Command::Stop => {
+                Command::Stop => {
                     let command_array = ["stop"];
+                    let _ = &player_lock
+                        .command(&command_array)
+                        .expect("Failed to execute command");
+                },
+                Command::TimeRemaining => {
+                    let command_array = ["time-remaining"];
                     let _ = &player_lock
                         .command(&command_array)
                         .expect("Failed to execute command");

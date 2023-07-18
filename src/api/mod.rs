@@ -11,6 +11,7 @@ pub mod api; // declare the module
 pub enum Command {
     Start,
     Stop,
+    TimeRemaining,
 }
 
 #[derive(Debug)]
