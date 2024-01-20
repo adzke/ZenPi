@@ -6,6 +6,8 @@ use std::{
     sync::Arc,
 };
 use tokio::sync::{mpsc::channel, Mutex};
+use log::info;
+
 pub struct UnsafeSend<T>(T);
 unsafe impl<T> Send for UnsafeSend<T> {}
 
@@ -24,6 +26,7 @@ impl<T> DerefMut for UnsafeSend<T> {
 }
 
 fn configure_logger() {
+    std::env::set_var("RUST_LOG", "info");
     env_logger::init();
 }
 
@@ -33,9 +36,9 @@ async fn main() {
     let send_player = UnsafeSend(created_player);
     let player = Arc::new(Mutex::new(send_player));
     let player_clone = Arc::clone(&player);
-    configure_logger();
     
-    log::info!("Starting ZenPi by AD");
+    configure_logger();
+    info!("Starting ZenPi by AD");
     let (tx, rx) = channel::<Message>(512);
     let tx = Arc::new(Mutex::new(tx));
     let rx = Arc::new(Mutex::new(rx));

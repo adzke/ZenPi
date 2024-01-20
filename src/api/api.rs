@@ -1,5 +1,5 @@
 use std::sync::Arc;
-
+use log::info;
 use super::Message;
 use crate::api::Command;
 use poem::{
@@ -98,7 +98,7 @@ async fn html_controller() -> Html<&'static str> {
 }
 
 pub async fn main(tx: Arc<Mutex<Sender<Message>>>) -> Result<(), std::io::Error> {
-    println!("Starting server");
+    info!("Starting server");
     let app = Route::new()
         .at("/stop/", post(stop).data(tx.clone()))
         .at("/start/", post(start).data(tx.clone()))
