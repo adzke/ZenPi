@@ -2,11 +2,7 @@ use serde::Deserialize;
 
 pub mod api; // declare the module
 
-
-
-#[derive(Debug)]
-#[derive(Deserialize)]
-#[derive(Clone)]
+#[derive(Debug, Deserialize, Clone)]
 
 pub enum Command {
     Start,
@@ -14,8 +10,7 @@ pub enum Command {
     TimeRemaining,
 }
 
-#[derive(Debug)]
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct Message {
-    pub ipc_command: Command
+    pub ipc_command: Command,
 }
