@@ -40,20 +40,6 @@ async fn stop(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
 }
 
 #[handler]
-async fn time_remaining(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
-    let message = Message {
-        ipc_command: Command::TimeRemaining,
-    };
-
-    data.lock()
-        .await
-        .send(message)
-        .await
-        .expect("failed to send");
-    format!("Stop command sent")
-}
-
-#[handler]
 async fn html_controller() -> Html<&'static str> {
     Html(
         r#"
@@ -70,7 +56,6 @@ async fn html_controller() -> Html<&'static str> {
 
         <button onclick="sendCommand('/start/')">Start</button>
         <button onclick="sendCommand('/stop/')">Stop</button>
-        <button onclick="sendCommand('/time_remaining/')">Time Remaining</button>
 
         <script>
             async function sendCommand(endpoint) {
@@ -102,7 +87,6 @@ pub async fn main(tx: Arc<Mutex<Sender<Message>>>) -> Result<(), std::io::Error>
     let app = Route::new()
         .at("/stop/", post(stop).data(tx.clone()))
         .at("/start/", post(start).data(tx.clone()))
-        .at("/time_remaining/", post(time_remaining).data(tx.clone()))
         .at("/", get(html_controller));
     let _ = Server::new(TcpListener::bind("0.0.0.0:4000"))
         .run(app)

@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use mpv::MpvHandler;
 use tokio::sync::{mpsc::Receiver, Mutex};
+use log::info;
 use crate::{
     api::{Command, Message},
     UnsafeSend,
@@ -17,7 +18,6 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSen
 
     loop {
         if let Ok(message) = rx.clone().lock().await.try_recv() {
-            println!("{:?}", message.ipc_command);
             match message.ipc_command {
                 Command::Start => {
                     let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
@@ -26,6 +26,8 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSen
                         .await
                         .command(&command_array)
                         .expect("Failed to execute command");
+                    info!("ZenPi has started playing.");
+
                 }
                 Command::Stop => {
                     let command_array = ["stop"];
@@ -34,14 +36,7 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSen
                         .await
                         .command(&command_array)
                         .expect("Failed to execute command");
-                }
-                Command::TimeRemaining => {
-                    let command_array = ["time-remaining"];
-                    let _ = player
-                        .lock()
-                        .await
-                        .command(&command_array)
-                        .expect("Failed to execute command");
+                    info!("ZenPi has stopped playing.");
                 }
             }
         }
