@@ -1,11 +1,9 @@
-use mpv::{Event, MpvHandler};
-use std::sync::{mpsc::Receiver, Arc, Mutex, MutexGuard};
+use std::sync::Arc;
 
-use crate::api::{Message, Command};
+use mpv::{MpvHandler, Event};
+use tokio::sync::{Mutex, mpsc::Receiver};
 
-fn configure_logger() {
-    env_logger::init();
-}
+use crate::{api::{Message, Command}, UnsafeSend};
 
 pub fn configure_player() -> MpvHandler {
     log::info!("Configuring MPV Player");
@@ -29,47 +27,44 @@ pub fn configure_player() -> MpvHandler {
 //     );
 // }
 
-pub fn main(rx: Arc<Mutex<Receiver<Message>>>) {
-    let player = configure_player();
-    let player = Arc::new(Mutex::new(player));
+pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSend<MpvHandler>>> ) {
 
     log::info!("Loading file into MPV Player");
 
     loop {
-        let mut player_lock = player.lock().unwrap();
 
-        if let Ok(message) = rx.clone().lock().unwrap().try_recv() {
+        if let Ok(message) = rx.clone().lock().await.try_recv() {
             println!("{:?}", message.ipc_command);
             match message.ipc_command {
                 Command::Start => {
                     let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
-                    let _ = &player_lock
+                    let _ = player.lock().await
                         .command(&command_array)
                         .expect("Failed to execute command");
                 }
                 Command::Stop => {
                     let command_array = ["stop"];
-                    let _ = &player_lock
+                    let _ = player.lock().await
                         .command(&command_array)
                         .expect("Failed to execute command");
                 },
                 Command::TimeRemaining => {
                     let command_array = ["time-remaining"];
-                    let _ = &player_lock
+                    let _ = player.lock().await
                         .command(&command_array)
                         .expect("Failed to execute command");
                 }
             }
         }
 
-        if let Some(event) = player_lock.wait_event(0.0) {
-            println!("{:?}", event);
-            match event {
-                Event::EndFile(_) => {
-                    println!("all done :D")
-                }
-                _ => (),
-            }
-        }
+        // if let Some(event) = player.lock().await.wait_event(1.0) {
+        //     println!("{:?}", event);
+        //     match event {
+        //         Event::EndFile(_) => {
+        //             println!("all done :D")
+        //         }
+        //         _ => (),
+        //     }
+        // }
     }
 }

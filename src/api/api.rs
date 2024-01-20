@@ -1,4 +1,4 @@
-use std::sync::{mpsc::Sender, Arc, Mutex};
+use std::sync::Arc;
 
 use poem::{
     get, handler,
@@ -7,6 +7,7 @@ use poem::{
     web::{Data, Json, Path},
     EndpointExt, Route, Server,
 };
+use tokio::sync::{Mutex, mpsc::Sender};
 
 use crate::api::Command;
 
@@ -18,7 +19,7 @@ async fn start(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
         ipc_command: Command::Start,
     };
 
-    data.lock().unwrap().send(message).expect("failed to send");
+    data.lock().await.send(message).await.expect("failed to send");
     format!("Start command sent")
 }
 
@@ -28,7 +29,7 @@ async fn stop(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
         ipc_command: Command::Stop,
     };
 
-    data.lock().unwrap().send(message).expect("failed to send");
+    data.lock().await.send(message).await.expect("failed to send");
     format!("Stop command sent")
 }
 
@@ -38,7 +39,7 @@ async fn time_remaining(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
         ipc_command: Command::TimeRemaining,
     };
 
-    data.lock().unwrap().send(message).expect("failed to send");
+    data.lock().await.send(message).await.expect("failed to send");
     format!("Stop command sent")
 }
 
