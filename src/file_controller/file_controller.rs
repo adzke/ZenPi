@@ -1,9 +1,21 @@
+use chrono::{self, DateTime, Local};
+use serde::{Deserialize, Serialize};
 use std::{
     env,
     ffi::OsString,
     fs::{self, DirEntry, File},
-    path::Path,
+    path::{Path, PathBuf},
+    time::SystemTime,
 };
+use uuid::Uuid;
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Track {
+    track_id: String,
+    track_name: String,
+    track_path: PathBuf,
+    track_created_time: SystemTime,
+}
 
 pub struct FileController {
     binding: OsString,
@@ -11,6 +23,7 @@ pub struct FileController {
     application_name: String,
     application_state_data_path_str: String,
     audio_store_path_str: String,
+    tracks: Vec<Track>,
 }
 
 impl FileController {
@@ -37,6 +50,7 @@ impl FileController {
             application_name: "zenpi".to_string(),
             application_state_data_path_str,
             audio_store_path_str,
+            tracks: Vec::<Track>::new(),
         }
     }
 
@@ -83,18 +97,36 @@ impl FileController {
         }
     }
 
-    pub fn list_files(&self) -> Vec<String> {
-        let files_directory = fs::read_dir(self.audio_store_path_str.clone()).expect("Should return directory");
-        let mut file_vec = Vec::<String>::new();
+    pub fn list_files(&mut self) -> Vec<Track> {
+        let files_directory =
+            fs::read_dir(self.audio_store_path_str.clone()).expect("Should return directory");
         for file in files_directory {
             match file {
-                Ok(file) => file_vec.push(file.file_name().to_str().expect("Should now be a str").to_string()),
-                Err(_) => continue
+                Ok(file) => match self.tracks.iter().find(|t| t.track_path == file.path()) {
+                    Some(_) => continue,
+                    None => {
+                        let new_track = Track {
+                            track_id: Uuid::new_v4().to_string(),
+                            track_name: file
+                                .file_name()
+                                .into_string()
+                                .expect("OsString to be converted to Str"),
+                            track_created_time: file
+                                .metadata()
+                                .expect("Metadata should be present")
+                                .created()
+                                .expect("Expect a created time from metadata"),
+                            track_path: file.path(),
+                        };
+                        self.tracks.push(new_track);
+                    }
+                },
+
+                Err(_) => continue,
             }
         }
-        file_vec
+        self.tracks.clone()
     }
 }
 
-pub async fn main() {
-}
+pub async fn main() {}

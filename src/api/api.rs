@@ -1,7 +1,7 @@
 use std::{ffi::{OsStr, OsString}, sync::Arc};
 use log::info;
 use super::Message;
-use crate::{api::Command, file_controller::{self, file_controller::FileController}};
+use crate::{api::Command, file_controller::{self, file_controller::{FileController, Track}}};
 use poem::{
     get, handler,
     listener::TcpListener,
@@ -39,11 +39,8 @@ async fn stop(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController
 }
 
 #[handler]
-async fn list_tracks(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> Json<Vec<String>> {
+async fn list_tracks(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> Json<Vec<Track>> {
     let files = data.0.1.lock().await.list_files();
-    for file in files.clone() {
-        println!("{:?}", file)
-    }
     Json(files)
 }  
 
