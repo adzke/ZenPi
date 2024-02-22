@@ -1,23 +1,22 @@
-use std::sync::Arc;
+use std::{ffi::{OsStr, OsString}, sync::Arc};
 use log::info;
 use super::Message;
-use crate::api::Command;
+use crate::{api::Command, file_controller::{self, file_controller::FileController}};
 use poem::{
     get, handler,
     listener::TcpListener,
     post,
-    web::{Data, Html},
+    web::{Data, Html, Json},
     EndpointExt, Route, Server,
 };
 use tokio::sync::{mpsc::Sender, Mutex};
 
 #[handler]
-async fn start(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
+async fn start(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>) -> String {
     let message = Message {
         ipc_command: Command::Start,
     };
-
-    data.lock()
+    data.0.0.lock()
         .await
         .send(message)
         .await
@@ -26,18 +25,27 @@ async fn start(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
 }
 
 #[handler]
-async fn stop(data: Data<&Arc<Mutex<Sender<Message>>>>) -> String {
+async fn stop(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> String {
     let message = Message {
         ipc_command: Command::Stop,
     };
 
-    data.lock()
+    data.0.0.lock()
         .await
         .send(message)
         .await
         .expect("failed to send");
     format!("Stop command sent")
 }
+
+#[handler]
+async fn list_tracks(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> Json<Vec<String>> {
+    let files = data.0.1.lock().await.list_files();
+    for file in files.clone() {
+        println!("{:?}", file)
+    }
+    Json(files)
+}  
 
 #[handler]
 async fn html_controller() -> Html<&'static str> {
@@ -56,6 +64,9 @@ async fn html_controller() -> Html<&'static str> {
 
         <button onclick="sendCommand('/start/')">Start</button>
         <button onclick="sendCommand('/stop/')">Stop</button>
+        <button onclick="getRequest('/list/')">List</button>
+
+        
 
         <script>
             async function sendCommand(endpoint) {
@@ -74,6 +85,24 @@ async fn html_controller() -> Html<&'static str> {
                     alert(`Error: ${error.message}`);
                 }
             }
+
+            async function getRequest(endpoint) {
+                try {
+                    const response = await fetch(`http://192.168.0.112:4000${endpoint}`, {
+                        method: 'Get',
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        console.log(result)
+                        alert(result);
+                    } else {
+                        alert(`Failed to send command: ${response.statusText}`);
+                    }
+                } catch (error) {
+                    alert(`Error: ${error.message}`);
+                }
+            }
         </script>
 
         </body>
@@ -82,12 +111,14 @@ async fn html_controller() -> Html<&'static str> {
     )
 }
 
-pub async fn main(tx: Arc<Mutex<Sender<Message>>>) -> Result<(), std::io::Error> {
+pub async fn main(tx: Arc<Mutex<Sender<Message>>>, file_controller: Arc<Mutex<FileController>>,) -> Result<(), std::io::Error> {
+    let data = (tx.clone(), file_controller.clone() );
     let default_address = "0.0.0.0:4000";
     info!("Starting server");
     let app = Route::new()
-        .at("/stop/", post(stop).data(tx.clone()))
-        .at("/start/", post(start).data(tx.clone()))
+        .at("/stop/", post(stop).data(data.clone()))
+        .at("/start/", post(start).data(data.clone()))
+        .at("/list/", get(list_tracks).data(data.clone()))
         .at("/", get(html_controller));
     info!("Started server, running at {}:", default_address);
     let _ = Server::new(TcpListener::bind(default_address))
