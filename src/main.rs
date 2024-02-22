@@ -1,5 +1,6 @@
 mod api;
 mod media_controller;
+mod file_controller;
 use crate::{api::Message, media_controller::media_controller::configure_player};
 use std::{
     ops::{Deref, DerefMut},
@@ -26,7 +27,7 @@ impl<T> DerefMut for UnsafeSend<T> {
 }
 
 fn configure_logger() {
-    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 }
 
@@ -48,5 +49,8 @@ async fn main() {
     let t2: tokio::task::JoinHandle<()> = tokio::spawn(async {
         let _ = media_controller::media_controller::main(rx, player_clone).await;
     });
-    let _ = tokio::join!(t1, t2);
+    let t3: tokio::task::JoinHandle<()> = tokio::spawn(async {
+        let _ = file_controller::file_controller::main().await;
+    });
+    let _ = tokio::join!(t1, t2, t3);
 }

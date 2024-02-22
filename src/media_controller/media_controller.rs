@@ -20,7 +20,7 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSen
         if let Ok(message) = rx.clone().lock().await.try_recv() {
             match message.ipc_command {
                 Command::Start => {
-                    let command_array = ["loadfile", "/home/ad/Downloads/delta.m4a"];
+                    let command_array = ["loadfile", "/home/ad/.zenpi/application_data/audio_files/delta.m4a"];
                     let _ = player
                         .lock()
                         .await
