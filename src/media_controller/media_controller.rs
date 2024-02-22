@@ -25,17 +25,17 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, player: Arc<Mutex<UnsafeSen
                         .lock()
                         .await
                         .command(&command_array)
-                        .expect("Failed to execute command");
+                        .expect("Player load track and start playing.");
                     info!("ZenPi has started playing.");
-
                 }
+                
                 Command::Stop => {
                     let command_array = ["stop"];
                     let _ = player
                         .lock()
                         .await
                         .command(&command_array)
-                        .expect("Failed to execute command");
+                        .expect("Player to stop playing.");
                     info!("ZenPi has stopped playing.");
                 }
             }

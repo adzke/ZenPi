@@ -83,12 +83,14 @@ async fn html_controller() -> Html<&'static str> {
 }
 
 pub async fn main(tx: Arc<Mutex<Sender<Message>>>) -> Result<(), std::io::Error> {
+    let default_address = "0.0.0.0:4000";
     info!("Starting server");
     let app = Route::new()
         .at("/stop/", post(stop).data(tx.clone()))
         .at("/start/", post(start).data(tx.clone()))
         .at("/", get(html_controller));
-    let _ = Server::new(TcpListener::bind("0.0.0.0:4000"))
+    info!("Started server, running at {}:", default_address);
+    let _ = Server::new(TcpListener::bind(default_address))
         .run(app)
         .await?;
     Ok(())
