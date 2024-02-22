@@ -1,7 +1,7 @@
-use std::{ffi::{OsStr, OsString}, sync::Arc};
+use std::sync::Arc;
 use log::info;
 use super::Message;
-use crate::{api::Command, file_controller::{self, file_controller::{FileController, Track}}};
+use crate::{api::Command, file_controller::file_controller::{FileController, Track}};
 use poem::{
     get, handler,
     listener::TcpListener,

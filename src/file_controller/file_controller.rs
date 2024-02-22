@@ -1,11 +1,6 @@
-use chrono::{self, DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::{
-    env,
-    ffi::OsString,
-    fs::{self, DirEntry, File},
-    path::{Path, PathBuf},
-    time::SystemTime,
+    env, ffi::OsString, fs, path::{Path, PathBuf}, time::SystemTime
 };
 use uuid::Uuid;
 
@@ -18,9 +13,9 @@ pub struct Track {
 }
 
 pub struct FileController {
-    binding: OsString,
-    home_dir: String,
-    application_name: String,
+    _binding: OsString,
+    _home_dir: String,
+    _application_name: String,
     application_state_data_path_str: String,
     audio_store_path_str: String,
     tracks: Vec<Track>,
@@ -41,13 +36,13 @@ impl FileController {
             application_state_data_path_str
         );
         Self {
-            binding: binding.clone(),
-            home_dir: binding
+            _binding: binding.clone(),
+            _home_dir: binding
                 .clone()
                 .to_str()
                 .expect("Now to be a str")
                 .to_string(),
-            application_name: "zenpi".to_string(),
+            _application_name: "zenpi".to_string(),
             application_state_data_path_str,
             audio_store_path_str,
             tracks: Vec::<Track>::new(),
