@@ -1,13 +1,16 @@
 mod api;
-mod media_controller;
 mod file_controller;
-use crate::{api::Message, file_controller::file_controller::FileController, media_controller::media_controller::configure_player};
+mod media_controller;
+use crate::{
+    api::Message, file_controller::file_controller::FileController,
+    media_controller::media_controller::configure_player,
+};
+use log::info;
 use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
 use tokio::sync::{mpsc::channel, Mutex};
-use log::info;
 
 pub struct UnsafeSend<T>(T);
 unsafe impl<T> Send for UnsafeSend<T> {}
@@ -33,16 +36,17 @@ fn configure_logger() {
 
 #[tokio::main]
 async fn main() {
-    
     let created_player = configure_player();
-    let file_controller = FileController::new().initialise_file_controller();
+    let file_controller = FileController::new()
+        .initialise_file_controller()
+        .initialise_files();
     let file_controller_protected = Arc::new(Mutex::new(file_controller));
 
     let send_player = UnsafeSend(created_player);
     let player = Arc::new(Mutex::new(send_player));
     let player_clone = Arc::clone(&player);
     let file_controller_protected_api = Arc::clone(&file_controller_protected);
-    
+
     configure_logger();
     info!("Starting ZenPi by AD");
     let (tx, rx) = channel::<Message>(512);

@@ -16,24 +16,28 @@ use tokio::sync::{mpsc::Sender, Mutex};
 
 #[handler]
 async fn start(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>) -> String {
-    let track = data
+    match data
         .1
         .lock()
         .await
         .find_track("3a9788ca-7a5c-460e-b85e-357b14a129b7")
-        .expect("expect a track");
-    let message = Message {
-        ipc_command: Command::Start,
-        track: Some(track),
-    };
-    data.0
-         .0
-        .lock()
-        .await
-        .send(message)
-        .await
-        .expect("failed to send");
-    format!("Start command sent")
+    {
+        Ok(track) => {
+            let message = Message {
+                ipc_command: Command::Start,
+                track: Some(track),
+            };
+            data.0
+                 .0
+                .lock()
+                .await
+                .send(message)
+                .await
+                .expect("failed to send");
+            format!("Start command sent")
+        }
+        Err(err) => format!("{}", err),
+    }
 }
 
 #[handler]

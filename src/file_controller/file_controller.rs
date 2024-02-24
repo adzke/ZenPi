@@ -1,6 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::{
-    env, ffi::OsString, fs, path::{Path, PathBuf}, time::SystemTime
+    env,
+    ffi::OsString,
+    fs::{self, File},
+    io::{BufReader, BufWriter},
+    path::{Path, PathBuf},
+    time::SystemTime,
 };
 use uuid::Uuid;
 
@@ -16,6 +21,7 @@ pub struct FileController {
     _binding: OsString,
     _home_dir: String,
     _application_name: String,
+    manifest_path_str: String,
     application_state_data_path_str: String,
     audio_store_path_str: String,
     tracks: Vec<Track>,
@@ -35,6 +41,7 @@ impl FileController {
             "{}/application_data/audio_files/",
             application_state_data_path_str
         );
+        let manifest_file_path = format!("{}/.manifest.json", audio_store_path_str.clone());
         Self {
             _binding: binding.clone(),
             _home_dir: binding
@@ -45,8 +52,27 @@ impl FileController {
             _application_name: "zenpi".to_string(),
             application_state_data_path_str,
             audio_store_path_str,
+            manifest_path_str: manifest_file_path,
             tracks: Vec::<Track>::new(),
         }
+    }
+
+    pub fn initialise_files(mut self) -> Self {
+        let read_file = File::open(self.manifest_path_str.clone()).unwrap();
+        let write_file = File::options().write(true).open(self.manifest_path_str.clone()).unwrap();
+        println!("{:?}", write_file);
+
+        let reader = BufReader::new(read_file);
+        let writer = BufWriter::new(write_file);
+        let files_in_audio_folder: Vec<Track> = self.list_files();
+
+        serde_json::to_writer(writer, &files_in_audio_folder).unwrap();
+
+        let tracks: Vec<Track> = serde_json::from_reader(reader).unwrap();
+        for track in tracks {
+            println!("{:?}", track);
+        }
+        self
     }
 
     pub fn initialise_file_controller(self) -> Self {
@@ -80,8 +106,20 @@ impl FileController {
         match fs::create_dir_all(audio_store_path) {
             Ok(_) => {
                 log::info!("Created folder at: {:?}", audio_store_path);
-                self
             }
+            Err(err) => match err.kind() {
+                std::io::ErrorKind::AlreadyExists => (),
+                err => panic!(
+                    "Something SERIOUSLY bad has happened here family, error: {}",
+                    err
+                ),
+                _ => todo!(),
+            },
+        }
+        let manifest_file_path = format!("{}.manifest.json", self.audio_store_path_str.clone());
+        println!("{}", manifest_file_path);
+        match fs::File::create(manifest_file_path) {
+            Ok(_) => self,
             Err(err) => match err.kind() {
                 std::io::ErrorKind::AlreadyExists => self,
                 err => panic!(
@@ -126,7 +164,7 @@ impl FileController {
     pub fn find_track(&mut self, track_id: &str) -> Result<Track, String> {
         match self.tracks.iter().find(|x| x.track_id == track_id) {
             Some(track) => Ok(track.clone()),
-            None => Err(format!("Failed to find track by id: {}", track_id))
+            None => Err(format!("Failed to find track by id: {}", track_id)),
         }
     }
 }
