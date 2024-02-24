@@ -1,7 +1,9 @@
-use std::sync::Arc;
-use log::info;
 use super::Message;
-use crate::{api::Command, file_controller::file_controller::{FileController, Track}};
+use crate::{
+    api::Command,
+    file_controller::file_controller::{FileController, Track},
+};
+use log::info;
 use poem::{
     get, handler,
     listener::TcpListener,
@@ -9,14 +11,24 @@ use poem::{
     web::{Data, Html, Json},
     EndpointExt, Route, Server,
 };
+use std::sync::Arc;
 use tokio::sync::{mpsc::Sender, Mutex};
 
 #[handler]
 async fn start(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>) -> String {
+    let track = data
+        .1
+        .lock()
+        .await
+        .find_track("3a9788ca-7a5c-460e-b85e-357b14a129b7")
+        .expect("expect a track");
     let message = Message {
         ipc_command: Command::Start,
+        track: Some(track),
     };
-    data.0.0.lock()
+    data.0
+         .0
+        .lock()
         .await
         .send(message)
         .await
@@ -25,12 +37,15 @@ async fn start(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileControlle
 }
 
 #[handler]
-async fn stop(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> String {
+async fn stop(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>) -> String {
     let message = Message {
         ipc_command: Command::Stop,
+        track: None,
     };
 
-    data.0.0.lock()
+    data.0
+         .0
+        .lock()
         .await
         .send(message)
         .await
@@ -39,10 +54,12 @@ async fn stop(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController
 }
 
 #[handler]
-async fn list_tracks(data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>)  -> Json<Vec<Track>> {
-    let files = data.0.1.lock().await.list_files();
+async fn list_tracks(
+    data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>,
+) -> Json<Vec<Track>> {
+    let files = data.0 .1.lock().await.list_files();
     Json(files)
-}  
+}
 
 #[handler]
 async fn html_controller() -> Html<&'static str> {
@@ -108,8 +125,11 @@ async fn html_controller() -> Html<&'static str> {
     )
 }
 
-pub async fn main(tx: Arc<Mutex<Sender<Message>>>, file_controller: Arc<Mutex<FileController>>,) -> Result<(), std::io::Error> {
-    let data = (tx.clone(), file_controller.clone() );
+pub async fn main(
+    tx: Arc<Mutex<Sender<Message>>>,
+    file_controller: Arc<Mutex<FileController>>,
+) -> Result<(), std::io::Error> {
+    let data = (tx.clone(), file_controller.clone());
     let default_address = "0.0.0.0:4000";
     info!("Starting server");
     let app = Route::new()

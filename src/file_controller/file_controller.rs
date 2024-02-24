@@ -4,7 +4,7 @@ use std::{
 };
 use uuid::Uuid;
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct Track {
     track_id: String,
     track_name: String,
@@ -121,6 +121,13 @@ impl FileController {
             }
         }
         self.tracks.clone()
+    }
+
+    pub fn find_track(&mut self, track_id: &str) -> Result<Track, String> {
+        match self.tracks.iter().find(|x| x.track_id == track_id) {
+            Some(track) => Ok(track.clone()),
+            None => Err(format!("Failed to find track by id: {}", track_id))
+        }
     }
 }
 
