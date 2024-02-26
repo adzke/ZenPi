@@ -5,13 +5,14 @@ use crate::{
 };
 use log::info;
 use poem::{
+    error::BadRequest,
     get, handler,
     listener::TcpListener,
     post,
-    web::{Data, Html, Json},
-    EndpointExt, Route, Server,
+    web::{Data, Html, Json, Multipart},
+    EndpointExt, Result, Route, Server,
 };
-use std::sync::Arc;
+use std::{fs::File, io::Write, sync::Arc};
 use tokio::sync::{mpsc::Sender, Mutex};
 
 #[handler]
@@ -129,6 +130,21 @@ async fn html_controller() -> Html<&'static str> {
     )
 }
 
+#[handler]
+async fn upload_file(
+    mut multipart: Multipart,
+    data: Data<&(Arc<Mutex<Sender<Message>>>, Arc<Mutex<FileController>>)>,
+) -> Result<()> {
+    while let Some(field) = multipart.next_field().await? {
+        let file_name = field.file_name().clone().unwrap().to_string();
+        let data_bytes = field.bytes().await.map_err(BadRequest)?;
+        let audio_store_path = { data.1.lock().await.audio_store_path_str.clone() };
+        let mut file = File::create(format!("{}{}", audio_store_path, file_name)).unwrap();
+        file.write_all(&data_bytes).unwrap()
+    }
+    Ok(())
+}
+
 pub async fn main(
     tx: Arc<Mutex<Sender<Message>>>,
     file_controller: Arc<Mutex<FileController>>,
@@ -140,7 +156,8 @@ pub async fn main(
         .at("/stop/", post(stop).data(data.clone()))
         .at("/start/", post(start).data(data.clone()))
         .at("/list/", get(list_tracks).data(data.clone()))
-        .at("/", get(html_controller));
+        .at("/", get(html_controller))
+        .at("/file_upload", post(upload_file).data(data.clone()));
     info!("Started server, running at {}:", default_address);
     let _ = Server::new(TcpListener::bind(default_address))
         .run(app)

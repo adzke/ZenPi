@@ -23,7 +23,7 @@ pub struct FileController {
     _application_name: String,
     manifest_path_str: String,
     application_state_data_path_str: String,
-    audio_store_path_str: String,
+    pub audio_store_path_str: String,
     tracks: Vec<Track>,
 }
 
@@ -41,7 +41,10 @@ impl FileController {
             "{}/application_data/audio_files/",
             application_state_data_path_str
         );
-        let manifest_file_path = format!("{}/.manifest.json", audio_store_path_str.clone());
+        let manifest_file_path = format!(
+            "{}/application_data/.manifest.json",
+            application_state_data_path_str.clone()
+        );
         Self {
             _binding: binding.clone(),
             _home_dir: binding
@@ -59,7 +62,10 @@ impl FileController {
 
     pub fn initialise_files(mut self) -> Self {
         let read_file = File::open(self.manifest_path_str.clone()).unwrap();
-        let write_file = File::options().write(true).open(self.manifest_path_str.clone()).unwrap();
+        let write_file = File::options()
+            .write(true)
+            .open(self.manifest_path_str.clone())
+            .unwrap();
         println!("{:?}", write_file);
 
         let reader = BufReader::new(read_file);
@@ -113,12 +119,10 @@ impl FileController {
                     "Something SERIOUSLY bad has happened here family, error: {}",
                     err
                 ),
-                _ => todo!(),
             },
         }
-        let manifest_file_path = format!("{}.manifest.json", self.audio_store_path_str.clone());
-        println!("{}", manifest_file_path);
-        match fs::File::create(manifest_file_path) {
+        println!("{}", self.manifest_path_str);
+        match fs::File::create(self.manifest_path_str.clone()) {
             Ok(_) => self,
             Err(err) => match err.kind() {
                 std::io::ErrorKind::AlreadyExists => self,
@@ -131,6 +135,7 @@ impl FileController {
     }
 
     pub fn list_files(&mut self) -> Vec<Track> {
+        let supported_file_extentions = vec!["mp3", "m4a", "wav"];
         let files_directory =
             fs::read_dir(self.audio_store_path_str.clone()).expect("Should return directory");
         for file in files_directory {
@@ -138,20 +143,30 @@ impl FileController {
                 Ok(file) => match self.tracks.iter().find(|t| t.track_path == file.path()) {
                     Some(_) => continue,
                     None => {
-                        let new_track = Track {
-                            track_id: Uuid::new_v4().to_string(),
-                            track_name: file
-                                .file_name()
-                                .into_string()
-                                .expect("OsString to be converted to Str"),
-                            track_created_time: file
-                                .metadata()
-                                .expect("Metadata should be present")
-                                .created()
-                                .expect("Expect a created time from metadata"),
-                            track_path: file.path(),
-                        };
-                        self.tracks.push(new_track);
+                        let file_extention = file.path().extension().expect("expect path.").to_str().unwrap().to_string();
+                        println!("{}", file_extention);
+                        match supported_file_extentions
+                            .iter()
+                            .find(|s| s == &&file_extention)
+                        {
+                            Some(_) => {
+                                let new_track = Track {
+                                    track_id: Uuid::new_v4().to_string(),
+                                    track_name: file
+                                        .file_name()
+                                        .into_string()
+                                        .expect("OsString to be converted to Str"),
+                                    track_created_time: file
+                                        .metadata()
+                                        .expect("Metadata should be present")
+                                        .created()
+                                        .expect("Expect a created time from metadata"),
+                                    track_path: file.path(),
+                                };
+                                self.tracks.push(new_track);
+                            }
+                            None => continue,
+                        }
                     }
                 },
 
