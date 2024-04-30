@@ -1,12 +1,16 @@
 mod api;
+mod file_controller;
 mod media_controller;
-use crate::{api::Message, media_controller::media_controller::configure_player};
+use crate::{
+    api::Message, file_controller::file_controller::FileController,
+    media_controller::media_controller::configure_player,
+};
+use log;
 use std::{
     ops::{Deref, DerefMut},
     sync::Arc,
 };
 use tokio::sync::{mpsc::channel, Mutex};
-use log::info;
 
 pub struct UnsafeSend<T>(T);
 unsafe impl<T> Send for UnsafeSend<T> {}
@@ -26,27 +30,38 @@ impl<T> DerefMut for UnsafeSend<T> {
 }
 
 fn configure_logger() {
-    std::env::set_var("RUST_LOG", "info");
+    std::env::set_var("RUST_LOG", "debug");
     env_logger::init();
 }
 
 #[tokio::main]
 async fn main() {
+    configure_logger();
+
     let created_player = configure_player();
+    let file_controller = FileController::new()
+        .initialise_file_controller()
+        .initialise_files();
+    let file_controller_protected = Arc::new(Mutex::new(file_controller));
+
     let send_player = UnsafeSend(created_player);
     let player = Arc::new(Mutex::new(send_player));
     let player_clone = Arc::clone(&player);
-    
-    configure_logger();
-    info!("Starting ZenPi by AD");
+    let file_controller_protected_api = Arc::clone(&file_controller_protected);
+    let file_controller_protected_media_controller = Arc::clone(&file_controller_protected);
+
+    log::info!("Starting ZenPi by AD");
     let (tx, rx) = channel::<Message>(512);
     let tx = Arc::new(Mutex::new(tx));
     let rx = Arc::new(Mutex::new(rx));
     let t1: tokio::task::JoinHandle<()> = tokio::spawn(async {
-        let _ = api::api::main(tx).await;
+        let _ = api::api::main(tx, file_controller_protected_api).await;
     });
     let t2: tokio::task::JoinHandle<()> = tokio::spawn(async {
-        let _ = media_controller::media_controller::main(rx, player_clone).await;
+        let _ = media_controller::media_controller::main(rx, player_clone, file_controller_protected_media_controller).await;
     });
-    let _ = tokio::join!(t1, t2);
+    let t3: tokio::task::JoinHandle<()> = tokio::spawn(async {
+        let _ = file_controller::file_controller::main().await;
+    });
+    let _ = tokio::join!(t1, t2, t3);
 }
