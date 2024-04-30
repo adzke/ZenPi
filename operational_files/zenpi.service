@@ -1,0 +1,11 @@
+[Unit]
+Description=ZenPi, Peace out folks.
+
+[Service]
+ExecStart=/home/ad/ZenPi/target/release/zenplayer
+User=ad
+Group=ad
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
