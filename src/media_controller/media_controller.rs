@@ -1,25 +1,17 @@
 use crate::{
     api::{Command, Message},
     file_controller::file_controller::FileController,
-    UnsafeSend,
 };
-use log::{debug, error, info};
-use mpv::MpvHandler;
 use core::panic;
-use std::sync::Arc;
+use log;
+use std::{process::Child, sync::Arc};
 use tokio::sync::{mpsc::Receiver, Mutex};
-
-pub fn configure_player() -> MpvHandler {
-    log::info!("Configuring MPV Player");
-    let mpv_builder = mpv::MpvHandlerBuilder::new().expect("Failed to init MPV builder");
-    mpv_builder.build().expect("failed to build")
-}
 
 pub async fn main(
     rx: Arc<Mutex<Receiver<Message>>>,
-    player: Arc<Mutex<UnsafeSend<MpvHandler>>>,
     file_controller: Arc<Mutex<FileController>>,
 ) {
+    let mut child_proc: Option<Child> = None;
     log::info!("Loading file into MPV Player");
     loop {
         if let Ok(message) = rx.clone().lock().await.try_recv() {
@@ -45,59 +37,27 @@ pub async fn main(
                                     None => {
                                         log::error!("No Default track found");
                                         panic!("No default track found, exiting!")
-                                    },
+                                    }
+                                }
                             }
-                            },
                         }
                     };
 
                     log::debug!("Track path has been defined");
-                    let mut locked_player = player.lock().await;
 
-                    let command_array = ["loadfile", track_path.to_str().expect("expect str")];
-                    let _ = match locked_player.command_async(&command_array, 0) {
-                        Ok(_) => {
-                            info!("Start command has been recieved");
-                            loop {
-                                match locked_player.wait_event(1.0) {
-                                    Some(mpv_event) => match mpv_event {
-                                        mpv::Event::PlaybackRestart => {
-                                            info!("Playback has started successfully");
-                                            break;
-                                        }
-                                        mpv::Event::EndFile(env_file_reason) => {
-                                            match env_file_reason {
-                                                Ok(_) => {
-                                                    log::debug!("Start command has been sent!")
-                                                }
-                                                Err(err) => {
-                                                    error!("{}", err);
-                                                    break;
-                                                }
-                                            }
-                                        }
-                                        some_other_event => {
-                                            debug!("Event: {:?}", some_other_event);
-                                        }
-                                    },
-                                    None => (),
-                                }
-                            }
-                        }
-                        Err(err) => {
-                            error!("{}", err);
-                        }
-                    };
+                    child_proc = Some(
+                        std::process::Command::new("mpv")
+                            .arg(track_path.to_str().expect("expect str"))
+                            .spawn()
+                            .unwrap(),
+                    );
                 }
 
                 Command::Stop => {
-                    let command_array = ["stop"];
-                    let _ = player
-                        .lock()
-                        .await
-                        .command(&command_array)
-                        .expect("Player to stop playing.");
-                    info!("ZenPi has stopped playing.");
+                    if let Some(ref mut child) = child_proc {
+                        child.kill().unwrap();
+                        log::info!("ZenPi has stopped playing.");
+                    }
                 }
             }
         }

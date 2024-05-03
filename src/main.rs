@@ -3,7 +3,6 @@ mod file_controller;
 mod media_controller;
 use crate::{
     api::Message, file_controller::file_controller::FileController,
-    media_controller::media_controller::configure_player,
 };
 use log;
 use std::{
@@ -38,15 +37,11 @@ fn configure_logger() {
 async fn main() {
     configure_logger();
 
-    let created_player = configure_player();
     let file_controller = FileController::new()
         .initialise_file_controller()
         .initialise_files();
     let file_controller_protected = Arc::new(Mutex::new(file_controller));
 
-    let send_player = UnsafeSend(created_player);
-    let player = Arc::new(Mutex::new(send_player));
-    let player_clone = Arc::clone(&player);
     let file_controller_protected_api = Arc::clone(&file_controller_protected);
     let file_controller_protected_media_controller = Arc::clone(&file_controller_protected);
 
@@ -58,7 +53,7 @@ async fn main() {
         let _ = api::api::main(tx, file_controller_protected_api).await;
     });
     let t2: tokio::task::JoinHandle<()> = tokio::spawn(async {
-        let _ = media_controller::media_controller::main(rx, player_clone, file_controller_protected_media_controller).await;
+        let _ = media_controller::media_controller::main(rx, file_controller_protected_media_controller).await;
     });
     let t3: tokio::task::JoinHandle<()> = tokio::spawn(async {
         let _ = file_controller::file_controller::main().await;
