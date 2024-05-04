@@ -7,10 +7,7 @@ use log;
 use std::{process::Child, sync::Arc};
 use tokio::sync::{mpsc::Receiver, Mutex};
 
-pub async fn main(
-    rx: Arc<Mutex<Receiver<Message>>>,
-    file_controller: Arc<Mutex<FileController>>,
-) {
+pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, file_controller: Arc<Mutex<FileController>>) {
     let mut child_proc: Option<Child> = None;
     log::info!("Loading file into MPV Player");
     loop {
@@ -45,18 +42,29 @@ pub async fn main(
 
                     log::debug!("Track path has been defined");
 
-                    child_proc = Some(
-                        std::process::Command::new("mpv")
-                            .arg(track_path.to_str().expect("expect str"))
-                            .spawn()
-                            .unwrap(),
-                    );
+                    match child_proc {
+                        Some(ref handler) => {
+                            log::debug!(
+                                "ZenPi is already playing a track, ignoring, handler: {:?}",
+                                &handler
+                            )
+                        }
+                        None => {
+                            child_proc = Some(
+                                std::process::Command::new("mpv")
+                                    .arg(track_path.to_str().expect("expect str"))
+                                    .spawn()
+                                    .unwrap(),
+                            );
+                        }
+                    }
                 }
 
                 Command::Stop => {
                     if let Some(ref mut child) = child_proc {
                         child.kill().unwrap();
                         log::info!("ZenPi has stopped playing.");
+                        child_proc = None;
                     }
                 }
             }
