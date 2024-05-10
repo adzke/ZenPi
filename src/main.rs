@@ -35,10 +35,8 @@ fn configure_logger() {
 async fn main() {
     configure_logger();
 
-    std::process::Command::new("bluetoothctl connect 88:C6:26:5A:3F:BF")
-        .spawn()
-        .unwrap();
-
+    let out = std::process::Command::new("bluetoothctl connect 88:C6:26:5A:3F:BF").spawn().unwrap().stdout.unwrap();
+    println!("{:?}", out);
     let file_controller = FileController::new()
         .initialise_file_controller()
         .initialise_files();
