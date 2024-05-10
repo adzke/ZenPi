@@ -1,9 +1,7 @@
 mod api;
 mod file_controller;
 mod media_controller;
-use crate::{
-    api::Message, file_controller::file_controller::FileController,
-};
+use crate::{api::Message, file_controller::file_controller::FileController};
 use log;
 use std::{
     ops::{Deref, DerefMut},
@@ -37,6 +35,10 @@ fn configure_logger() {
 async fn main() {
     configure_logger();
 
+    std::process::Command::new("bluetoothctl connect 88:C6:26:5A:3F:BF")
+        .spawn()
+        .unwrap();
+
     let file_controller = FileController::new()
         .initialise_file_controller()
         .initialise_files();
@@ -53,7 +55,11 @@ async fn main() {
         let _ = api::api::main(tx, file_controller_protected_api).await;
     });
     let t2: tokio::task::JoinHandle<()> = tokio::spawn(async {
-        let _ = media_controller::media_controller::main(rx, file_controller_protected_media_controller).await;
+        let _ = media_controller::media_controller::main(
+            rx,
+            file_controller_protected_media_controller,
+        )
+        .await;
     });
     let t3: tokio::task::JoinHandle<()> = tokio::spawn(async {
         let _ = file_controller::file_controller::main().await;
