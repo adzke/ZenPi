@@ -34,8 +34,7 @@ fn configure_logger() {
 #[tokio::main]
 async fn main() {
     configure_logger();
-
-    std::process::Command::new("bluetoothctl").arg("connect").arg("88:C6:26:5A:3F:BF").spawn().unwrap().stdout.unwrap();
+    std::process::Command::new("bluetoothctl").arg("connect").arg("88:C6:26:5A:3F:BF").spawn().unwrap();
     let file_controller = FileController::new()
         .initialise_file_controller()
         .initialise_files();
