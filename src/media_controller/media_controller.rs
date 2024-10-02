@@ -47,7 +47,6 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, file_controller: Arc<Mutex<
                             if let Some(ref mut child) = child_proc {
                                 child.kill().unwrap();
                                 log::info!("ZenPi has stopped playing.");
-                                child_proc = None;
                             }
                             child_proc = Some(
                                 std::process::Command::new("mpv")
