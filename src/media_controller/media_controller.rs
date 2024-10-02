@@ -43,13 +43,12 @@ pub async fn main(rx: Arc<Mutex<Receiver<Message>>>, file_controller: Arc<Mutex<
                     log::debug!("Track path has been defined");
 
                     match child_proc {
-                        Some(ref handler) => {
-                            log::debug!(
-                                "ZenPi is already playing a track, ignoring, handler: {:?}",
-                                &handler
-                            )
-                        }
-                        None => {
+                        _ => {
+                            if let Some(ref mut child) = child_proc {
+                                child.kill().unwrap();
+                                log::info!("ZenPi has stopped playing.");
+                                child_proc = None;
+                            }
                             child_proc = Some(
                                 std::process::Command::new("mpv")
                                     .arg(track_path.to_str().expect("expect str"))
